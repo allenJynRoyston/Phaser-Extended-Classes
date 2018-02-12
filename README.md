@@ -11,7 +11,7 @@
 
 
 ### Preview
-[Click here](https://vue-vuex-es6-webpack-phaser-bp.herokuapp.com/#/fun)
+[Click here](https://phaser-class-extensions.herokuapp.com)
 
 
 ### Install instructions:
