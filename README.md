@@ -17,7 +17,7 @@
 ### Install instructions:
 ```sh
 $ git clone https://github.com/allenRoyston/phaserCreationSuite.git
-$ cd vue-vuex-webpack-es6-phaser-boilerplate
+$ cd phaserCreationSuite
 $ npm install
 ```
 
