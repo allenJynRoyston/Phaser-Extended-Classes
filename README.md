@@ -17,17 +17,26 @@
 $ git clone https://github.com/allenRoyston/vue-vuex-webpack-es6-phaser-boilerplate.git
 $ cd vue-vuex-webpack-es6-phaser-boilerplate
 $ npm install
-$ npm run dev (USE THIS WHEN DEVELOPING)
 ```
 
-### Deployment instructions:
-```sh
-$ gulp build
+### Site development mode (Webpack + hotreload)
+```
+$ npm run dev
+```
 
-// TO PREVIEW WITH BUILD SCRIPT
-$ npm start
-OR 
+
+### Site deployment (Webpack bundle and preview)
+```
+$ gulp build
 $ gulp
+```
+
+### Game development mode
+```
+$ cd src/phaser_Buildtool/
+$ gulp
+// will now watch for changes in the _gameTemplate.ts file and compile on changes
+// game will be available for debuggin in the route /#/phaserdev
 ```
 
 
