@@ -9,15 +9,18 @@
 - Font Awesome
 - Jasmine (Unit testing)
 
+
 ### Preview
 [Click here](https://vue-vuex-es6-webpack-phaser-bp.herokuapp.com/#/fun)
 
+
 ### Install instructions:
 ```sh
-$ git clone https://github.com/allenRoyston/vue-vuex-webpack-es6-phaser-boilerplate.git
+$ git clone https://github.com/allenRoyston/phaserCreationSuite.git
 $ cd vue-vuex-webpack-es6-phaser-boilerplate
 $ npm install
 ```
+
 
 ### Site development mode (Webpack + hotreload)
 ```
@@ -30,6 +33,7 @@ $ npm run dev
 $ gulp build
 $ gulp
 ```
+
 
 ### Game development mode
 ```
@@ -79,6 +83,7 @@ You can disable this effect by removing these two lines of code in the src/App.v
   },
 ```
 
+
 ### Vuex store
 Vuex is included by default. You'll find it located in src/store/store.js
 You'll find adding to or removing properties from the Store is easy.  
@@ -127,11 +132,13 @@ And watching for changes is equally as easy.  Just place this in your mounted() 
   }
 ```
 
+
 ### Unit testing
 Simple to start and expand.  
 ```
 $ npm run test
 ```
+
 
 ### Build the Phaser/ThreeJS file independently
 Phaser and ThreeJS files (located in src/phaser and src/threeJS respectively) can be built independently of the app.  Think of it as the app being a console and the file being the cartridge.  This has several benefits:  
@@ -141,6 +148,7 @@ Phaser and ThreeJS files (located in src/phaser and src/threeJS respectively) ca
 
 ### When to use gulp vs npm run dev
 Webpack won't instantiate the Express server, so any endpoints you build in Express will be returned as a 404.  If you run Gulp, it will start the server and load your app.  However, any changes you make to components will cause Webpack to rerun - and it is quite slow.  You only need this if you're building out endpoints, otherwise stick with npm run dev.
+
 
 ### Build size
 Final size is ~945kb, which admittedly sounds a little big, but not bad considering you're getting jQuery/Phaser/Velocity/SemanticUI/Vue/Vuex all included.  
