@@ -1,6 +1,7 @@
 <template lang="pug">
   div
-    #phaser-example
+    center
+      #phaser-example
 </template>
 
 <script>
@@ -19,7 +20,7 @@ export default {
   },
   methods: {
     init(){
-      this.loadGame('boilerplate/_gameTemplate.js')
+      this.loadGame('angularAttack/angularattack_demo.js')
     },
     loadGame(fileName){
       // remove old game first
@@ -32,7 +33,7 @@ export default {
           js.src = `src/phaser/${fileName}`;
           document.body.appendChild(js);
           js.onload = (() => {
-            __phaser.init(this.$el, this, {width: 640, height: 640});
+            __phaser.init(this.$el, this, {width: 800, height: 640});
           })
     },
     loadFile(file, index){

@@ -23,10 +23,11 @@ export default {
         {title: 'Sprite Class Manager', file: 'boilerplate/spriteManagerDemo.min.js', source: 'spriteManagerDemo.ts'},
         {title: 'Controller Class Manager', file: 'boilerplate/controllerManagerDemo.min.js', source: 'controllerManagerDemo.ts'},
         {title: 'Bitmapdata Layer Demo', file: 'boilerplate/bitmapLayerDemo.min.js', source: 'bitmapLayerDemo.ts'},
-        {title: 'Bitmapdata Fill Demo', file: 'boilerplate/bitmapFillDemo.min.js', source: 'bitmapFillDemo.ts'},
+        //{title: 'Bitmapdata Fill Demo', file: 'boilerplate/bitmapFillDemo.min.js', source: 'bitmapFillDemo.ts'},
         {title: 'Sprite Tween Demo', file: 'boilerplate/spriteTweenDemo.min.js', source: 'spriteTweenDemo.ts'},
         {title: 'Particle FX Demo', file: 'boilerplate/particleDemo.min.js', source: 'particleDemo.ts'},
         {title: 'Filter FX Demo', file: 'boilerplate/filterDemo.min.js', source: 'filterDemo.ts'},
+        {title: 'Filter FX 2 Demo', file: 'boilerplate/filterDemo2.min.js', source: 'filterDemo2.ts'},
       ]
     }
   },
@@ -35,7 +36,7 @@ export default {
   },
   methods: {
     init(){
-      this.loadGame('boilerplate/gameTemplate.js')
+      this.loadGame(`${this.demos[this.active].file}`)
     },
     viewSource(file){
       window.open(

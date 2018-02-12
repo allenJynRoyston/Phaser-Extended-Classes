@@ -9,7 +9,6 @@ var PhaserGameObject = (function () {
     PhaserGameObject.prototype.init = function (el, parent, options) {
         // declare variables BOILERPLATE
         var isPaused = false, dimensions = { width: options.width, height: options.height }, game = new Phaser.Game(options.width, options.height, Phaser.WEBGL, el, { preload: preload, create: create, update: update }), _this = this;
-        debugger;
         var text, index = 0, line = '', distance = 300, speed = 4, stars = null, max = 200, xx = [], yy = [], zz = [], buttonDelay, leftKey, rightKey, upKey, downKey, enterKey, enterA, enterB, enterX, enterY, clickSound, selectSound, style, loadingtext, loadingPercentage, splashDelay, splashScreen, gametitleart, pressStartTextDelay, pressStartText, content, zwearth, zwcity, zwoperator1, zwoperator2, zwoperator3, zwcats1, zwcats2, skiptext, pureblack;
         var assets = {
             app: null,
@@ -33,7 +32,6 @@ var PhaserGameObject = (function () {
             state: "boot"
         };
         function preload() {
-            debugger;
             // set canvas color
             game.stage.backgroundColor = '#2f2f2f';
             // images
@@ -254,23 +252,26 @@ var PhaserGameObject = (function () {
                     assets.ready.music.intro.loopFull(0.75);
                     content = [
                         "      ",
-                        "The year was 20XX.",
-                        "The world was experience a wave of great change.",
+                        "IN A.D. 2018",
+                        "WAR WAS BEGINNING.",
                         "",
-                        "",
-                        "When all of a sudden.",
-                        "...",
-                        "...",
                         " ",
-                        "Google: \"How are you gentlemen?\"",
-                        "Google: \"All your code are belong to us.\"",
-                        "Google: \"You have no chance to revert make your time.\"",
-                        "Google: \"Ha ha ha ha...\"",
+                        "NORTH KOREA HAS SET US UP THE BOMB.",
                         "",
-                        "PM: \"Take off every dev.\"",
-                        "PM: \"You know what you doing.\"",
                         " ",
-                        "PM: \"For great justice.\"",
+                        "AMERICA:  WE GET SIGNAL.",
+                        "AMERICA:  MAIN SCREEN TURN ON.",
+                        "AMERICA:  ITS YOU.",
+                        "",
+                        "NK: HOW ARE YOU GENTLEMEN.",
+                        "NK: ALL YOUR BASE ARE BELONG TO US.",
+                        "NK: YOU HAVE NO CHANCE TO SURVIVE, MAKE YOUR TIME.",
+                        "NK: HAHAHAHAHA.",
+                        "",
+                        "AMERICA: TAKE OFF EVERY NUKE.",
+                        "AMERICA: YOU KNOW WHAT YOU DOING.",
+                        " ",
+                        "AMERICA: FOR GREAT JUSTICE.",
                         " ",
                         " ",
                         " ",
@@ -347,7 +348,7 @@ var PhaserGameObject = (function () {
                         text.bringToTop();
                         skiptext.bringToTop();
                     }, this);
-                    game.time.events.add(Phaser.Timer.SECOND * 67, function () {
+                    game.time.events.add(Phaser.Timer.SECOND * 75, function () {
                         startGameplay();
                     }, this);
                 }, 1000);
@@ -441,20 +442,6 @@ var PhaserGameObject = (function () {
                     }
                     //-----------
                 }
-                //-----------------
-                //-----------------
-                if (assets.state == "gameIntro") {
-                    //----------- wait for keypress
-                    if (game.time.now > buttonDelay && !assets.disableInput) {
-                        if (assets.keybufferStart[0]) {
-                            selectSound.play();
-                            startGameplay();
-                            buttonDelay = game.time.now + 250;
-                        }
-                    }
-                    //-----------
-                }
-                //-----------------
             }
             //-----------------
         }

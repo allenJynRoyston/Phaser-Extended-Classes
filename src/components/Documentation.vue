@@ -2,10 +2,10 @@
   .section
     .box
       center
-        p Status: Under active development    
+        p Status: Under active development
     .container
       .columns
-        .column.is-2
+        .column.is-3
           ul
             li(v-for="item in items")
               a(@click='active = item.id') {{ item.title }}
@@ -22,7 +22,7 @@
 
 <script>
 export default {
-  name: 'about',
+  name: 'documentation',
   data () {
     return {
       store: this.$store,

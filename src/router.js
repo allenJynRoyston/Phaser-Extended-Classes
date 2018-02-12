@@ -5,13 +5,14 @@ import VueResource from 'vue-resource'
 
 // pages
 import Home from './components/Home.vue'
-import Classes from './components/Classes.vue'
+import Documentation from './components/Documentation.vue'
 import Game from './components/Game.vue'
 import Three from './components/Three.vue'
 import Gamedev from './components/GameDev.vue'
 
 
 // elements
+Vue.component('workinggame-component', require('./components/elements/WorkingGameComponent.vue'))
 Vue.component('game-component', require('./components/elements/GameDemoComponent.vue'))
 Vue.component('gamedev-component', require('./components/elements/GameDevComponent.vue'))
 Vue.component('three-component', require('./components/elements/ThreeDemoComponent.vue'))
@@ -43,9 +44,9 @@ export default new Router({
       component: Home
     },
     {
-      path: '/classes',
-      name: 'Classes',
-      component: Classes
+      path: '/documentation',
+      name: 'Documentation',
+      component: Documentation
     },
     {
       path: '/phaser',

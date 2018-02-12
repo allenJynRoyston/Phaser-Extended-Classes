@@ -6,7 +6,7 @@
       a(@click='setHeader(true)')
         router-link(to="/") Home
       a(@click='setHeader(false)')
-        router-link(to="/classes") Classes
+        router-link(to="/documentation") Documentation
       a(@click='setHeader(false)')
         router-link(to="/phaser") Phaser
       a(@click='setHeader(false)')

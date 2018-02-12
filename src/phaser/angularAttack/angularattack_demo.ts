@@ -343,23 +343,26 @@ class PhaserGameObject {
 
                   content = [
                       "      ",
-                      "The year was 20XX.",
-                      "The world was experience a wave of great change.",
+                      "IN A.D. 2018",
+                      "WAR WAS BEGINNING.",
                       "",
-                      "",
-                      "When all of a sudden.",
-                      "...",
-                      "...",
                       " ",
-                      "Google: \"How are you gentlemen?\"",
-                      "Google: \"All your code are belong to us.\"",
-                      "Google: \"You have no chance to revert make your time.\"",
-                      "Google: \"Ha ha ha ha...\"",
+                      "NORTH KOREA HAS SET US UP THE BOMB.",
                       "",
-                      "PM: \"Take off every dev.\"",
-                      "PM: \"You know what you doing.\"",
                       " ",
-                      "PM: \"For great justice.\"",
+                      "AMERICA:  WE GET SIGNAL.",
+                      "AMERICA:  MAIN SCREEN TURN ON.",
+                      "AMERICA:  ITS YOU.",
+                      "",
+                      "NK: HOW ARE YOU GENTLEMEN.",
+                      "NK: ALL YOUR BASE ARE BELONG TO US.",
+                      "NK: YOU HAVE NO CHANCE TO SURVIVE, MAKE YOUR TIME.",
+                      "NK: HAHAHAHAHA.",
+                      "",
+                      "AMERICA: TAKE OFF EVERY NUKE.",
+                      "AMERICA: YOU KNOW WHAT YOU DOING.",
+                      " ",
+                      "AMERICA: FOR GREAT JUSTICE.",
                       " ",
                       " ",
                       " ",
@@ -454,7 +457,7 @@ class PhaserGameObject {
                       skiptext.bringToTop()
                   }, this);
 
-                  game.time.events.add(Phaser.Timer.SECOND * 67, function(){
+                  game.time.events.add(Phaser.Timer.SECOND * 75, function(){
                       startGameplay()
                   }, this);
 
