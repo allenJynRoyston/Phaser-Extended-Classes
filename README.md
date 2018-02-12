@@ -36,6 +36,7 @@ $ gulp
 
 
 ### Game development mode
+Used in conjunction with [phaser_Buildtools](https://github.com/allenRoyston)
 ```
 $ cd src/phaser_Buildtool/
 $ gulp
