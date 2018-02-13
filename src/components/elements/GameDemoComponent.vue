@@ -6,7 +6,8 @@
             .button.is-small.is-link(v-for='(demo, index) in demos' @click='loadFile(demo.file, index)') {{demo.title}}
     br
     #phaser-example
-    a.small(@click='viewSource(demos[active].source)') View source code
+    //
+      a.small(@click='viewSource(demos[active].source)') View source code
 </template>
 
 <script>
