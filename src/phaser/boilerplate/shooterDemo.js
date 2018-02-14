@@ -6,7 +6,7 @@ var PhaserGameObject = (function () {
         };
     }
     PhaserGameObject.prototype.init = function (el, parent, options) {
-        var phaserMaster = new PHASER_MASTER({ game: new Phaser.Game(options.width, options.height, Phaser.WEBGL, el, { preload: preload, create: create, update: update }), resolution: { width: options.width, height: options.height } }), phaserControls = new PHASER_CONTROLS(), phaserMouse = new PHASER_MOUSE({ showDebugger: false }), phaserSprites = new PHASER_SPRITE_MANAGER(), phaserBmd = new PHASER_BITMAPDATA_MANAGER(), phaserTexts = new PHASER_TEXT_MANAGER(), phaserButtons = new PHASER_BUTTON_MANAGER(), phaserGroup = new PHASER_GROUP_MANAGER();
+        var phaserMaster = new PHASER_MASTER({ game: new Phaser.Game(options.width, options.height, Phaser.WEBGL, el, { preload: preload, create: create, update: update }), resolution: { width: options.width, height: options.height } }), phaserControls = new PHASER_CONTROLS(), phaserMouse = new PHASER_MOUSE({ showDebugger: false }), phaserSprites = new PHASER_SPRITE_MANAGER(), phaserBmd = new PHASER_BITMAPDATA_MANAGER(), phaserTexts = new PHASER_TEXT_MANAGER(), phaserButtons = new PHASER_BUTTON_MANAGER(), phaserGroup = new PHASER_GROUP_MANAGER(), phaserBitmapdata = new PHASER_BITMAPDATA_MANAGER();
         function preload() {
             var game = phaserMaster.game();
             game.load.enableParallel = true;
@@ -31,6 +31,9 @@ var PhaserGameObject = (function () {
             phaserMaster.changeState('PRELOAD');
             new PHASER_PRELOADER({ game: game, delayInSeconds: 0, done: function () { preloadComplete(); } });
         }
+        function generateHexColor() {
+            return '#' + ((0.5 + 0.5 * Math.random()) * 0xFFFFFF << 0).toString(16);
+        }
         function create() {
             var game = phaserMaster.game();
             phaserControls.assign(game);
@@ -40,6 +43,7 @@ var PhaserGameObject = (function () {
             phaserTexts.assign(game);
             phaserButtons.assign(game);
             phaserGroup.assign(game);
+            phaserBitmapdata.assign(game);
             game.physics.startSystem(Phaser.Physics.ARCADE);
             var fragmentSrc = [
                 "precision mediump float;",
@@ -69,26 +73,94 @@ var PhaserGameObject = (function () {
             var filter = phaserMaster.let('filter', new Phaser.Filter(game, { iChannel0: { type: 'sampler2D', value: sprite.texture, textureData: { repeat: true } } }, fragmentSrc));
             filter.setResolution(1920, 1080);
             sprite.filters = [filter];
-            phaserGroup.add(1, sprite);
+            phaserGroup.add(0, sprite);
+            phaserMaster.let('score', 0);
+            var particlesSprite = phaserBmd.addGradient({ name: 'blockBmp', group: 'particles', start: '#fff000', end: '#ffffff', width: 2, height: 2, render: false });
             var emitter = phaserMaster.let('emitter', game.add.emitter(game, 0, 0, 100));
-            emitter.makeParticles('particlefx');
-            emitter.gravity = 200;
+            emitter.makeParticles(particlesSprite);
+            emitter.alpha = 0.5;
+            emitter.gravity = 0;
             phaserGroup.layer(1).add(emitter);
-            var scoreText = phaserTexts.add({ name: 'scoreText', x: 10, y: 10, font: 'gem', size: 18, default: 'Score:' });
-            var livesText = phaserTexts.add({ name: 'livesText', x: game.world.width - 100, y: 10, font: 'gem', size: 18, default: 'Lives' });
-            var stateText = phaserTexts.add({ name: 'stateText', font: 'gem', size: 25, default: 'State text' });
-            phaserTexts.center('stateText', 0, 0);
-            var subText = phaserTexts.add({ name: 'subText', y: game.world.centerY, font: 'gem', size: 18, default: 'Sub text' });
+            var stars = phaserBmd.addGradient({ name: 'starBmp', group: 'blockBmpGroup', start: '#ffffff', end: '#ffffff', width: 1, height: 1, render: false });
+            for (var i = 0; i < 100; i++) {
+                var star = phaserSprites.add({ name: "star_" + i, group: 'movingStarField', x: game.rnd.integerInRange(0, game.world.width), y: game.rnd.integerInRange(0, game.world.height), reference: stars });
+                star.starType = game.rnd.integerInRange(1, 3);
+                star.scale.setTo(star.starType, star.starType);
+                star.onUpdate = function () {
+                    var momentum = 10 - (this.starType * 3);
+                    if (this.y > this.game.world.height) {
+                        this.y = 10;
+                    }
+                    this.y += momentum;
+                };
+                phaserGroup.layer(0).add(star);
+            }
+            var scoreText = phaserTexts.add({ name: 'scoreText', group: 'topbar', x: 10, y: 10, font: 'gem', size: 18, default: "Score: " + phaserMaster.get('score'), visible: false });
+            scoreText.updateScore = function () {
+                this.setText("Score: " + phaserMaster.get('score'));
+            };
+            var livesText = phaserTexts.add({ name: 'livesText', group: 'topbar', x: game.world.width - 100, y: 10, font: 'gem', size: 18, default: 'Lives', visible: false });
+            var subText = phaserTexts.add({ name: 'subText', group: 'mission', y: game.world.centerY - 50, font: 'gem', size: 18, default: 'Sub text', visible: false });
             phaserTexts.center('subText', 0, 50);
             var debuggerText = phaserTexts.add({ name: 'debuggerText', font: 'gem', size: 16, default: 'Sprite count: ' });
             phaserTexts.alignToBottomCenter('debuggerText', 10);
-            phaserGroup.addMany(9, [scoreText, livesText, stateText, subText, debuggerText]);
+            var healthText = phaserTexts.add({ name: 'healthText', font: 'gem', size: 16, default: 'Heaalth' });
+            phaserTexts.alignToBottomLeftCorner('healthText', 10);
+            phaserGroup.addMany(9, [scoreText, livesText, subText, debuggerText]);
+            var shape = phaserBitmapdata.addGradient({ name: 'bmpHealthbar', group: 'g1', start: '#0000FF', end: '#33B5E5', width: 200, height: 20, render: false });
+            var healthbar = phaserSprites.add({ x: 5, y: game.canvas.height - 25, name: "healthbar", group: 'ui', reference: shape.cacheBitmapData, visible: false });
+            healthbar.scale.setTo(.5, 1);
+            var shape2 = phaserBitmapdata.addGradient({ name: 'bmpUnderbar', group: 'g1', start: '#2f3640', end: '#e84118', width: 200, height: 20, render: false });
+            var underbar = phaserSprites.add({ x: 5, y: game.canvas.height - 25, name: "underbar", group: 'ui', reference: shape2.cacheBitmapData, visible: false });
+            phaserGroup.add(9, healthbar);
+            phaserGroup.add(8, underbar);
         }
         function preloadComplete() {
             var game = phaserMaster.game();
             var player = createPlayer();
-            player.moveToStart();
+            playSequence(['SAVE', 'THE', 'WORLD'], function () {
+                player.moveToStart();
+                for (var i = 0; i < 5; i++) {
+                    createAlien({
+                        x: game.rnd.integerInRange(50, game.canvas.width - 50),
+                        y: game.rnd.integerInRange(-50, -200),
+                        ix: game.rnd.integerInRange(-100, 100),
+                        iy: game.rnd.integerInRange(0, 100)
+                    });
+                }
+                game.time.events.add(Phaser.Timer.SECOND * 1, function () {
+                    phaserTexts.getGroup('topbar').forEach(function (text) {
+                        text.y = -text.height;
+                        text.visible = true;
+                        game.add.tween(text).to({ y: 10 }, 1000, Phaser.Easing.Back.InOut, true, 0, 0, false);
+                    });
+                    phaserSprites.getGroup('ui').forEach(function (sprite) {
+                        sprite.x = -600;
+                        sprite.visible = true;
+                        game.add.tween(sprite).to({ x: 5 }, 1500, Phaser.Easing.Elastic.InOut, true, 0, 0, false);
+                    });
+                }).autoDestroy = true;
+            });
             phaserMaster.changeState('READY');
+        }
+        function playSequence(wordlist, callback) {
+            var game = phaserMaster.game();
+            wordlist.forEach(function (word, index) {
+                var splashText = phaserTexts.add({ name: "splashText_" + index, group: 'splash', font: 'gem', size: 18, default: word, visible: false });
+                splashText.startSplash = function () {
+                    var _this = this;
+                    this.visible = true;
+                    this.scale.setTo(10, 10);
+                    phaserTexts.alignToCenter(this.name);
+                    game.add.tween(splashText.scale).to({ x: 0.5, y: 0.5 }, 350, Phaser.Easing.Linear.In, true, 0);
+                    game.add.tween(splashText).to({ x: this.game.world.centerX, y: this.game.world.centerY, alpha: 0.75 }, 350, Phaser.Easing.Linear.In, true, 0);
+                    setTimeout(function () {
+                        phaserTexts.destroy(_this.name);
+                    }, 350);
+                };
+                game.time.events.add(Phaser.Timer.SECOND / 2.5 * index, splashText.startSplash, splashText).autoDestroy = true;
+            });
+            game.time.events.add(Phaser.Timer.SECOND / 2.5 * wordlist.length, callback, this).autoDestroy = true;
         }
         function createPlayer() {
             var game = phaserMaster.game();
@@ -136,7 +208,7 @@ var PhaserGameObject = (function () {
                 var emitter = phaserMaster.get('emitter');
                 emitter.x = this.x;
                 emitter.y = this.y;
-                emitter.start(true, 2000, null, 5);
+                emitter.start(true, 1500, null, 5);
                 var explosion = phaserSprites.add({ name: "exp_" + game.rnd.integer(), group: 'enemy_explosions', x: this.x - this.width / 2, y: this.y - this.height / 2, reference: 'kaboom' });
                 explosion.scale.setTo(0.5, 0.5);
                 explosion.animations.add('kaboom');
@@ -144,7 +216,7 @@ var PhaserGameObject = (function () {
                 phaserGroup.add(6, explosion);
                 game.time.events.add(Phaser.Timer.SECOND / 2, function () {
                     phaserSprites.destroy(explosion.name);
-                });
+                }).autoDestroy = true;
                 this.destroyIt();
             };
             alien.removeIt = function () {
@@ -152,6 +224,10 @@ var PhaserGameObject = (function () {
             };
             alien.destroyIt = function () {
                 var _this = this;
+                var score = phaserMaster.get('score');
+                phaserMaster.forceLet('score', score += 100);
+                var scoreText = phaserTexts.get('scoreText');
+                scoreText.updateScore();
                 var tween = {
                     angle: game.rnd.integerInRange(-720, 720),
                     x: this.x - game.rnd.integerInRange(-25, 25),
@@ -178,7 +254,7 @@ var PhaserGameObject = (function () {
                         phaserSprites.destroy(explosion.name);
                     });
                     phaserSprites.destroy(_this.name);
-                }, this);
+                }, this).autoDestroy = true;
             };
             alien.pause = function () {
                 if (this.body !== null) {
@@ -196,19 +272,19 @@ var PhaserGameObject = (function () {
             };
             alien.checkLocation = function () {
                 this.angle += alien.angleMomentum;
-                if (alien.angleMomentum > 0) {
-                    alien.angleMomentum -= 0.002;
+                if (this.angleMomentum > 0) {
+                    this.angleMomentum -= 0.002;
                 }
-                if (alien.angleMomentum < 0) {
-                    alien.angleMomentum += 0.002;
+                if (this.angleMomentum < 0) {
+                    this.angleMomentum += 0.002;
                 }
                 if (this.y > this.height) {
-                    if (alien.body !== null) {
-                        alien.body.collideWorldBounds = true;
+                    if (this.body !== null) {
+                        this.body.collideWorldBounds = true;
                     }
                 }
                 if (this.y > this.game.canvas.height - 100) {
-                    if (alien.body !== null) {
+                    if (this.body !== null) {
                         this.body.collideWorldBounds = false;
                     }
                 }
@@ -278,14 +354,10 @@ var PhaserGameObject = (function () {
             var player = phaserSprites.get('player');
             var debuggerText = phaserTexts.get('debuggerText');
             debuggerText.setText("Sprite count: " + phaserSprites.getAll("ARRAY").length);
-            if (phaserControls.checkWithDelay({ isActive: true, key: 'START', delay: 500 })) {
-                if (phaserMaster.getCurrentState() === 'READY') {
-                    phaserMaster.changeState('PAUSE');
-                }
-                else if (phaserMaster.getCurrentState() === 'PAUSE') {
-                    phaserMaster.changeState('READY');
-                }
-            }
+            filter.update();
+            phaserSprites.getGroup('movingStarField').forEach(function (star) {
+                star.onUpdate();
+            });
             if (phaserMaster.checkState('READY')) {
                 if (phaserSprites.getGroup('aliens').length < 3) {
                     createAlien({
@@ -307,7 +379,7 @@ var PhaserGameObject = (function () {
                 if (phaserControls.read('LEFT').active) {
                     player.moveX(-5);
                 }
-                if (phaserControls.checkWithDelay({ isActive: true, key: 'A', delay: 400 - (phaserControls.read('A').state * 50) })) {
+                if (phaserControls.checkWithDelay({ isActive: true, key: 'A', delay: 500 - (phaserControls.read('A').state * 75) })) {
                     createBullet(player.x, player.y);
                 }
             }
@@ -1257,37 +1329,37 @@ var PHASER_TEXT_MANAGER = (function () {
             console.log("Duplicate key name not allowed: " + params.name);
         }
     };
-    PHASER_TEXT_MANAGER.prototype.destroy = function (key) {
-        var keys = [];
+    PHASER_TEXT_MANAGER.prototype.destroy = function (name) {
+        var destroyArray = [];
         var deleteArray = this.texts.array.filter(function (obj) {
             return obj.name === name;
         });
         for (var _i = 0, deleteArray_3 = deleteArray; _i < deleteArray_3.length; _i++) {
             var text = deleteArray_3[_i];
-            keys.push(text.key);
+            destroyArray.push(text.name);
             text.destroy();
         }
         delete this.texts.object[name];
         this.texts.array = this.texts.array.filter(function (obj) {
-            return obj.name !== key;
+            return obj.name !== name;
         });
-        return keys;
+        return destroyArray;
     };
-    PHASER_TEXT_MANAGER.prototype.destroyGroup = function (key) {
-        var keys = [];
+    PHASER_TEXT_MANAGER.prototype.destroyGroup = function (name) {
+        var destroyArray = [];
         var deletearray = this.texts.array.filter(function (obj) {
-            return obj.group === key;
+            return obj.group === name;
         });
         for (var _i = 0, deletearray_1 = deletearray; _i < deletearray_1.length; _i++) {
             var text = deletearray_1[_i];
-            keys.push(text.key);
+            destroyArray.push(text.key);
             text.destroy();
         }
-        delete this.texts.object[key];
+        delete this.texts.object[name];
         this.texts.array = this.texts.array.filter(function (obj) {
-            return obj.group !== key;
+            return obj.group !== name;
         });
-        return keys;
+        return destroyArray;
     };
     PHASER_TEXT_MANAGER.prototype.get = function (key) {
         return this.texts.object[key];
