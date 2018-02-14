@@ -45,46 +45,23 @@ var PhaserGameObject = (function () {
             phaserGroup.assign(game);
             phaserBitmapdata.assign(game);
             phaserMaster.let('score', 0);
-            phaserMaster.let('time', 34);
-            phaserMaster.let('startTime', 0);
+            phaserMaster.let('roundTime', 30);
+            phaserMaster.let('clock', game.time.create(false));
+            phaserMaster.let('elapsedTime', 0);
+            game.onPause.add(function () {
+                pauseGame();
+            }, this);
+            game.onResume.add(function () {
+                unpauseGame();
+            }, this);
             game.physics.startSystem(Phaser.Physics.ARCADE);
-            var fragmentSrc = [
-                "precision mediump float;",
-                "uniform float     time;",
-                "uniform vec2      resolution;",
-                "uniform sampler2D iChannel0;",
-                "void main( void ) {",
-                "float t = time;",
-                "vec2 uv = gl_FragCoord.xy / resolution.xy;",
-                "vec2 texcoord = gl_FragCoord.xy / vec2(resolution.y);",
-                "texcoord.y -= t*0.2;",
-                "float zz = 1.0/(1.0-uv.y*1.7);",
-                "texcoord.y -= zz * sign(zz);",
-                "vec2 maa = texcoord.xy * vec2(zz, 1.0) - vec2(zz, 0.0) ;",
-                "vec2 maa2 = (texcoord.xy * vec2(zz, 1.0) - vec2(zz, 0.0))*0.3 ;",
-                "vec4 stone = texture2D(iChannel0, maa);",
-                "vec4 blips = texture2D(iChannel0, maa);",
-                "vec4 mixer = texture2D(iChannel0, maa2);",
-                "float shade = abs(1.0/zz);",
-                "vec3 outp = mix(shade*stone.rgb, mix(1.0, shade, abs(sin(t+maa.y-sin(maa.x))))*blips.rgb, min(1.0, pow(mixer.g*2.1, 2.0)));",
-                "gl_FragColor = vec4(outp,1.0);",
-                "}"
-            ];
-            var sprite = phaserSprites.add({ x: 0, y: 0, name: "filterBG", group: 'filter', reference: 'background' });
-            sprite.width = game.world.width;
-            sprite.height = game.world.height;
-            var filter = phaserMaster.let('filter', new Phaser.Filter(game, { iChannel0: { type: 'sampler2D', value: sprite.texture, textureData: { repeat: true } } }, fragmentSrc));
-            filter.setResolution(1920, 1080);
-            sprite.filters = [filter];
-            phaserGroup.add(0, sprite);
-            var particlesSprite = phaserBmd.addGradient({ name: 'blockBmp', group: 'particles', start: '#fff000', end: '#ffffff', width: 2, height: 2, render: false });
+            var particlesSprite = phaserBmd.addGradient({ name: 'blockBmp', group: 'particles', start: '#ff0000', end: '#FF4500', width: 1, height: 1, render: false });
             var emitter = phaserMaster.let('emitter', game.add.emitter(game, 0, 0, 100));
             emitter.makeParticles(particlesSprite);
-            emitter.alpha = 0.5;
             emitter.gravity = 0;
             phaserGroup.layer(1).add(emitter);
             var stars = phaserBmd.addGradient({ name: 'starBmp', group: 'blockBmpGroup', start: '#ffffff', end: '#ffffff', width: 1, height: 1, render: false });
-            for (var i = 0; i < 100; i++) {
+            for (var i = 0; i < 25; i++) {
                 var star = phaserSprites.add({ name: "star_" + i, group: 'movingStarField', x: game.rnd.integerInRange(0, game.world.width), y: game.rnd.integerInRange(0, game.world.height), reference: stars });
                 star.starType = game.rnd.integerInRange(1, 3);
                 star.scale.setTo(star.starType, star.starType);
@@ -100,8 +77,12 @@ var PhaserGameObject = (function () {
             var timeSeconds = phaserTexts.add({ name: 'timeSeconds', group: 'timeKeeper', font: 'gem', size: 65, default: "25", visible: false });
             phaserTexts.alignToTopCenter('timeSeconds', 20);
             timeSeconds.onUpdate = function () {
-                var totalTime = phaserMaster.get('time');
-                var inSeconds = parseInt((totalTime - phaserMaster.get('startTime') - this.game.time.totalElapsedSeconds()).toFixed(0));
+                var totalTime = phaserMaster.get('elapsedTime');
+                var elapsedTime = phaserMaster.get('elapsedTime');
+                elapsedTime += (phaserMaster.get('clock').elapsed * .001);
+                phaserMaster.forceLet('elapsedTime', elapsedTime);
+                var roundTime = phaserMaster.get('roundTime');
+                var inSeconds = parseInt((roundTime - elapsedTime).toFixed(0));
                 if (inSeconds >= 0) {
                     this.setText("" + inSeconds);
                 }
@@ -110,12 +91,12 @@ var PhaserGameObject = (function () {
                 }
             };
             timeSeconds.reveal = function () {
-                this.y = -this.height;
+                this.y = -200;
                 this.visible = true;
                 this.game.add.tween(this).to({ y: 10 }, 1000, Phaser.Easing.Back.InOut, true, 0, 0, false);
             };
             timeSeconds.hide = function () {
-                this.game.add.tween(this).to({ y: -this.height }, 1000, Phaser.Easing.Back.InOut, true, 0, 0, false);
+                this.game.add.tween(this).to({ y: -200 }, 1000, Phaser.Easing.Back.InOut, true, 0, 0, false);
             };
             var scoreText = phaserTexts.add({ name: 'scoreText', group: 'ui', x: 10, y: 10, font: 'gem', size: 18, default: "Score: " + phaserMaster.get('score'), visible: false });
             scoreText.onUpdate = function () { };
@@ -197,22 +178,22 @@ var PhaserGameObject = (function () {
         function preloadComplete() {
             var game = phaserMaster.game();
             var player = createPlayer();
-            playSequence(['SAVE', 'THE', 'WORLD'], function () {
+            playSequence(['BEES?', '', '', 'NO!', 'RADIOACTIVE', 'KILLER', 'BEES'], function () {
                 player.moveToStart();
-                game.time.events.add(Phaser.Timer.SECOND * 1, function () {
-                    playSequence([phaserMaster.get('time') + " SECONDS", 'GO'], function () {
+                game.time.events.add(Phaser.Timer.SECOND * 1.5, function () {
+                    playSequence([phaserMaster.get('roundTime') + " SECONDS", 'GO'], function () {
                         phaserTexts.getGroup('timeKeeper').forEach(function (text) {
                             text.reveal();
                         });
-                        game.time.events.add(Phaser.Timer.SECOND * 2, function () {
+                        game.time.events.add(Phaser.Timer.SECOND / 2, function () {
                             phaserTexts.getGroup('ui').forEach(function (text) {
                                 text.reveal();
                             });
                             phaserSprites.getGroup('ui').forEach(function (sprite) {
                                 sprite.reveal();
                             });
-                            phaserMaster.let('startTime', game.time.totalElapsedSeconds());
                         }).autoDestroy = true;
+                        phaserMaster.get('clock').start();
                         phaserMaster.changeState('READY');
                     });
                 });
@@ -577,18 +558,22 @@ var PhaserGameObject = (function () {
         function returnAllCollidables() {
             return phaserSprites.getGroup('aliens').concat(phaserSprites.getGroup('trashes'));
         }
+        function pauseGame() {
+            phaserMaster.get('clock').stop();
+        }
+        function unpauseGame() {
+            phaserMaster.get('clock').start();
+        }
         function update() {
             var game = phaserMaster.game();
-            var filter = phaserMaster.get('filter');
             var player = phaserSprites.get('player');
             var debuggerText = phaserTexts.get('debuggerText');
             debuggerText.onUpdate();
-            filter.update();
             phaserSprites.getGroup('movingStarField').forEach(function (star) {
                 star.onUpdate();
             });
             if (phaserMaster.checkState('READY')) {
-                if (phaserSprites.getGroup('aliens').length < 30) {
+                if (phaserSprites.getGroup('aliens').length < 5) {
                     createAlien({
                         x: game.rnd.integerInRange(0, game.canvas.width),
                         y: game.rnd.integerInRange(-50, -100),
