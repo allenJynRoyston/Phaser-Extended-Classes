@@ -13,12 +13,12 @@ var PhaserGameObject = (function () {
             game.stage.backgroundColor = '#2f2f2f';
             game.load.image('winners', 'src/assets/game/demo1/images/winners.jpg');
             game.load.image('bullet', 'src/assets/game/demo1/images/bullet.png');
-            game.load.image('enemyBullet', 'src/assets/game/demo1/images/enemy-bullet.png');
+            game.load.image('bomb', 'src/assets/game/demo1/images/enemy-bullet.png');
             game.load.spritesheet('invader', 'src/assets/game/demo1/images/invader32x32x4.png', 32, 32);
             game.load.image('player', 'src/assets/game/demo1/images/ship.png');
             game.load.spritesheet('kaboom', 'src/assets/game/demo1/images/explode.png', 128, 128);
             game.load.image('starfield', 'src/assets/game/demo1/images/starfield.png');
-            game.load.image('background', 'src/assets/game/demo1/images/starfield.png');
+            game.load.image('background', 'src/assets/game/demo1/images/tron.png');
             game.load.image('particlefx', 'src/assets/game/demo1/images/gem.png');
             game.load.audio('music-main', ['src/assets/game/demo1/music/zombies-in-space.ogg']);
             game.load.audio('powerupfx', ['src/assets/game/demo1/sound/Powerup4.ogg']);
@@ -44,6 +44,9 @@ var PhaserGameObject = (function () {
             phaserButtons.assign(game);
             phaserGroup.assign(game);
             phaserBitmapdata.assign(game);
+            phaserMaster.let('score', 0);
+            phaserMaster.let('time', 34);
+            phaserMaster.let('startTime', 0);
             game.physics.startSystem(Phaser.Physics.ARCADE);
             var fragmentSrc = [
                 "precision mediump float;",
@@ -74,7 +77,6 @@ var PhaserGameObject = (function () {
             filter.setResolution(1920, 1080);
             sprite.filters = [filter];
             phaserGroup.add(0, sprite);
-            phaserMaster.let('score', 0);
             var particlesSprite = phaserBmd.addGradient({ name: 'blockBmp', group: 'particles', start: '#fff000', end: '#ffffff', width: 2, height: 2, render: false });
             var emitter = phaserMaster.let('emitter', game.add.emitter(game, 0, 0, 100));
             emitter.makeParticles(particlesSprite);
@@ -87,7 +89,7 @@ var PhaserGameObject = (function () {
                 star.starType = game.rnd.integerInRange(1, 3);
                 star.scale.setTo(star.starType, star.starType);
                 star.onUpdate = function () {
-                    var momentum = 10 - (this.starType * 3);
+                    var momentum = 16 - (this.starType * 5);
                     if (this.y > this.game.world.height) {
                         this.y = 10;
                     }
@@ -95,23 +97,100 @@ var PhaserGameObject = (function () {
                 };
                 phaserGroup.layer(0).add(star);
             }
-            var scoreText = phaserTexts.add({ name: 'scoreText', group: 'topbar', x: 10, y: 10, font: 'gem', size: 18, default: "Score: " + phaserMaster.get('score'), visible: false });
+            var timeSeconds = phaserTexts.add({ name: 'timeSeconds', group: 'timeKeeper', font: 'gem', size: 65, default: "25", visible: false });
+            phaserTexts.alignToTopCenter('timeSeconds', 20);
+            timeSeconds.onUpdate = function () {
+                var totalTime = phaserMaster.get('time');
+                var inSeconds = parseInt((totalTime - phaserMaster.get('startTime') - this.game.time.totalElapsedSeconds()).toFixed(0));
+                if (inSeconds >= 0) {
+                    this.setText("" + inSeconds);
+                }
+                else {
+                    endLevel();
+                }
+            };
+            timeSeconds.reveal = function () {
+                this.y = -this.height;
+                this.visible = true;
+                this.game.add.tween(this).to({ y: 10 }, 1000, Phaser.Easing.Back.InOut, true, 0, 0, false);
+            };
+            timeSeconds.hide = function () {
+                this.game.add.tween(this).to({ y: -this.height }, 1000, Phaser.Easing.Back.InOut, true, 0, 0, false);
+            };
+            var scoreText = phaserTexts.add({ name: 'scoreText', group: 'ui', x: 10, y: 10, font: 'gem', size: 18, default: "Score: " + phaserMaster.get('score'), visible: false });
+            scoreText.onUpdate = function () { };
             scoreText.updateScore = function () {
                 this.setText("Score: " + phaserMaster.get('score'));
             };
-            var livesText = phaserTexts.add({ name: 'livesText', group: 'topbar', x: game.world.width - 100, y: 10, font: 'gem', size: 18, default: 'Lives', visible: false });
-            var subText = phaserTexts.add({ name: 'subText', group: 'mission', y: game.world.centerY - 50, font: 'gem', size: 18, default: 'Sub text', visible: false });
-            phaserTexts.center('subText', 0, 50);
-            var debuggerText = phaserTexts.add({ name: 'debuggerText', font: 'gem', size: 16, default: 'Sprite count: ' });
-            phaserTexts.alignToBottomCenter('debuggerText', 10);
-            var healthText = phaserTexts.add({ name: 'healthText', font: 'gem', size: 16, default: 'Heaalth' });
+            scoreText.reveal = function () {
+                this.y = -this.height;
+                this.visible = true;
+                game.add.tween(this).to({ y: 10 }, 1000, Phaser.Easing.Back.InOut, true, 0, 0, false);
+            };
+            scoreText.hide = function () {
+                game.add.tween(this).to({ y: -100 }, 1000, Phaser.Easing.Back.InOut, true, 0, 0, false);
+            };
+            var livesText = phaserTexts.add({ name: 'livesText', group: 'ui', x: game.world.width - 100, y: 10, font: 'gem', size: 18, default: 'Lives', visible: false });
+            livesText.onUpdate = function () { };
+            livesText.reveal = function () {
+                this.y = -this.height;
+                this.visible = true;
+                this.game.add.tween(this).to({ y: 10 }, 1000, Phaser.Easing.Back.InOut, true, 0, 0, false);
+            };
+            livesText.hide = function () {
+                this.game.add.tween(this).to({ y: -100 }, 1000, Phaser.Easing.Back.InOut, true, 0, 0, false);
+            };
+            var healthText = phaserTexts.add({ name: 'healthText', group: 'ui', font: 'gem', size: 16, default: 'Planet', visible: false });
             phaserTexts.alignToBottomLeftCorner('healthText', 10);
-            phaserGroup.addMany(9, [scoreText, livesText, subText, debuggerText]);
-            var shape = phaserBitmapdata.addGradient({ name: 'bmpHealthbar', group: 'g1', start: '#0000FF', end: '#33B5E5', width: 200, height: 20, render: false });
+            healthText.onUpdate = function () { };
+            healthText.reveal = function () {
+                this.x = -this.width;
+                this.visible = true;
+                this.game.add.tween(this).to({ x: 25 }, 1000, Phaser.Easing.Back.InOut, true, 0, 0, false);
+            };
+            healthText.hide = function () {
+                this.game.add.tween(this).to({ x: -this.width }, 1000, Phaser.Easing.Back.InOut, true, 0, 0, false);
+            };
+            var debuggerText = phaserTexts.add({ name: 'debuggerText', group: 'ui', font: 'gem', size: 16, default: 'Sprite count:', visible: false });
+            phaserTexts.alignToBottomCenter('debuggerText', 10);
+            debuggerText.onUpdate = function () {
+                var count = phaserSprites.getGroup('trashes').concat(phaserSprites.getGroup('aliens'));
+                debuggerText.setText("Enemy count: " + count.length);
+            };
+            debuggerText.reveal = function () {
+                this.y = this.game.canvas.height + this.height;
+                this.visible = true;
+                this.game.add.tween(this).to({ y: this.game.canvas.height - this.height - 20 }, 1000, Phaser.Easing.Back.InOut, true, 0, 0, false);
+            };
+            debuggerText.hide = function () {
+                this.game.add.tween(this).to({ y: this.game.canvas.height + this.height }, 1000, Phaser.Easing.Back.InOut, true, 0, 0, false);
+            };
+            phaserGroup.addMany(9, [scoreText, livesText, debuggerText]);
+            var shape = phaserBitmapdata.addGradient({ name: 'bmpHealthbar', group: 'ui', start: '#0000FF', end: '#33B5E5', width: 200, height: 20, render: false });
             var healthbar = phaserSprites.add({ x: 5, y: game.canvas.height - 25, name: "healthbar", group: 'ui', reference: shape.cacheBitmapData, visible: false });
             healthbar.scale.setTo(.5, 1);
-            var shape2 = phaserBitmapdata.addGradient({ name: 'bmpUnderbar', group: 'g1', start: '#2f3640', end: '#e84118', width: 200, height: 20, render: false });
+            healthbar.onUpdate = function () {
+            };
+            healthbar.reveal = function () {
+                this.x = -600;
+                this.visible = true;
+                this.game.add.tween(this).to({ x: 5 }, 1500, Phaser.Easing.Elastic.InOut, true, 0, 0, false);
+            };
+            healthbar.hide = function () {
+                this.game.add.tween(this).to({ x: -600 }, 1500, Phaser.Easing.Elastic.InOut, true, 0, 0, false);
+            };
+            var shape2 = phaserBitmapdata.addGradient({ name: 'bmpUnderbar', group: 'ui', start: '#2f3640', end: '#e84118', width: 200, height: 20, render: false });
             var underbar = phaserSprites.add({ x: 5, y: game.canvas.height - 25, name: "underbar", group: 'ui', reference: shape2.cacheBitmapData, visible: false });
+            underbar.onUpdate = function () {
+            };
+            underbar.reveal = function () {
+                this.x = -600;
+                this.visible = true;
+                this.game.add.tween(this).to({ x: 5 }, 1500, Phaser.Easing.Elastic.InOut, true, 0, 0, false);
+            };
+            underbar.hide = function () {
+                this.game.add.tween(this).to({ x: -600 }, 1500, Phaser.Easing.Elastic.InOut, true, 0, 0, false);
+            };
             phaserGroup.add(9, healthbar);
             phaserGroup.add(8, underbar);
         }
@@ -120,28 +199,24 @@ var PhaserGameObject = (function () {
             var player = createPlayer();
             playSequence(['SAVE', 'THE', 'WORLD'], function () {
                 player.moveToStart();
-                for (var i = 0; i < 5; i++) {
-                    createAlien({
-                        x: game.rnd.integerInRange(50, game.canvas.width - 50),
-                        y: game.rnd.integerInRange(-50, -200),
-                        ix: game.rnd.integerInRange(-100, 100),
-                        iy: game.rnd.integerInRange(0, 100)
-                    });
-                }
                 game.time.events.add(Phaser.Timer.SECOND * 1, function () {
-                    phaserTexts.getGroup('topbar').forEach(function (text) {
-                        text.y = -text.height;
-                        text.visible = true;
-                        game.add.tween(text).to({ y: 10 }, 1000, Phaser.Easing.Back.InOut, true, 0, 0, false);
+                    playSequence([phaserMaster.get('time') + " SECONDS", 'GO'], function () {
+                        phaserTexts.getGroup('timeKeeper').forEach(function (text) {
+                            text.reveal();
+                        });
+                        game.time.events.add(Phaser.Timer.SECOND * 2, function () {
+                            phaserTexts.getGroup('ui').forEach(function (text) {
+                                text.reveal();
+                            });
+                            phaserSprites.getGroup('ui').forEach(function (sprite) {
+                                sprite.reveal();
+                            });
+                            phaserMaster.let('startTime', game.time.totalElapsedSeconds());
+                        }).autoDestroy = true;
+                        phaserMaster.changeState('READY');
                     });
-                    phaserSprites.getGroup('ui').forEach(function (sprite) {
-                        sprite.x = -600;
-                        sprite.visible = true;
-                        game.add.tween(sprite).to({ x: 5 }, 1500, Phaser.Easing.Elastic.InOut, true, 0, 0, false);
-                    });
-                }).autoDestroy = true;
+                });
             });
-            phaserMaster.changeState('READY');
         }
         function playSequence(wordlist, callback) {
             var game = phaserMaster.game();
@@ -175,7 +250,7 @@ var PhaserGameObject = (function () {
                 this.visible = true;
                 this.x = this.game.world.centerX;
                 this.y = this.game.world.centerY + 550;
-                game.add.tween(player).to({ y: game.world.centerY + 200 }, 1000, Phaser.Easing.Exponential.InOut, true, 0, 0, false);
+                game.add.tween(this).to({ y: game.world.centerY + 200 }, 1000, Phaser.Easing.Exponential.InOut, true, 0, 0, false);
             };
             player.moveX = function (val) {
                 this.x += val;
@@ -188,6 +263,20 @@ var PhaserGameObject = (function () {
                 if (this.x > (this.game.canvas.width + this.width)) {
                     this.x = 0;
                 }
+            };
+            player.playEndSequence = function (callback) {
+                var _this = this;
+                this.game.add.tween(this.scale).to({ x: 2, y: 2 }, 1500, Phaser.Easing.Exponential.InOut, true, 0, 0, false);
+                this.game.add.tween(this).to({ x: this.game.world.centerX, y: this.game.world.centerY + 50 }, 1500, Phaser.Easing.Exponential.InOut, true, 0, 0, false).
+                    onComplete.add(function () {
+                    _this.game.add.tween(_this).to({ y: _this.game.world.height + 200 }, 1500, Phaser.Easing.Exponential.InOut, true, 250, 0, false).
+                        onComplete.add(function () {
+                        _this.game.add.tween(_this).to({ y: -200 }, 1000, Phaser.Easing.Exponential.InOut, true, 0, 0, false).
+                            onComplete.add(function () {
+                            callback();
+                        }, _this);
+                    }, _this);
+                }, this);
             };
             return player;
         }
@@ -209,21 +298,14 @@ var PhaserGameObject = (function () {
                 emitter.x = this.x;
                 emitter.y = this.y;
                 emitter.start(true, 1500, null, 5);
-                var explosion = phaserSprites.add({ name: "exp_" + game.rnd.integer(), group: 'enemy_explosions', x: this.x - this.width / 2, y: this.y - this.height / 2, reference: 'kaboom' });
-                explosion.scale.setTo(0.5, 0.5);
-                explosion.animations.add('kaboom');
-                explosion.play('kaboom', 30, false, true);
-                phaserGroup.add(6, explosion);
-                game.time.events.add(Phaser.Timer.SECOND / 2, function () {
-                    phaserSprites.destroy(explosion.name);
-                }).autoDestroy = true;
                 this.destroyIt();
             };
             alien.removeIt = function () {
                 phaserSprites.destroy(this.name);
             };
-            alien.destroyIt = function () {
+            alien.destroyIt = function (spawnMore) {
                 var _this = this;
+                if (spawnMore === void 0) { spawnMore = true; }
                 var score = phaserMaster.get('score');
                 phaserMaster.forceLet('score', score += 100);
                 var scoreText = phaserTexts.get('scoreText');
@@ -237,38 +319,19 @@ var PhaserGameObject = (function () {
                 this.game.add.tween(this).to(tween, game.rnd.integerInRange(150, 500), Phaser.Easing.Linear.Out, true, 0, 0, false);
                 this.body = null;
                 game.time.events.add(Phaser.Timer.SECOND / 2, function () {
-                    var explosion = phaserSprites.add({ name: "exp_" + game.rnd.integer(), group: 'enemy_explosions', x: _this.x - _this.width / 2, y: _this.y - _this.height / 2, reference: 'kaboom' });
-                    explosion.scale.setTo(0.5, 0.5);
-                    explosion.animations.add('kaboom');
-                    explosion.play('kaboom', 30, false, true);
-                    phaserGroup.add(7, explosion);
-                    for (var i = 0; i < 3; i++) {
-                        createAlien({
-                            x: _this.x,
-                            y: _this.y,
-                            ix: game.rnd.integerInRange(-100, 100),
-                            iy: -game.rnd.integerInRange(20, 100)
-                        });
+                    createExplosion(_this.x, _this.y, 1);
+                    if (spawnMore) {
+                        for (var i = 0; i < 5; i++) {
+                            createTrash({
+                                x: _this.x,
+                                y: _this.y,
+                                ix: game.rnd.integerInRange(-100, 100),
+                                iy: -game.rnd.integerInRange(20, 100)
+                            });
+                        }
                     }
-                    game.time.events.add(Phaser.Timer.SECOND / 2, function () {
-                        phaserSprites.destroy(explosion.name);
-                    });
                     phaserSprites.destroy(_this.name);
                 }, this).autoDestroy = true;
-            };
-            alien.pause = function () {
-                if (this.body !== null) {
-                    this.body.velocity.currentX = this.body.velocity.x;
-                    this.body.velocity.x = 0;
-                    this.body.velocity.currentY = this.body.velocity.y;
-                    this.body.velocity.y = 0;
-                }
-            };
-            alien.unpause = function () {
-                if (this.body !== null) {
-                    this.body.velocity.y = this.body.velocity.currentY;
-                    this.body.velocity.x = this.body.velocity.currentX;
-                }
             };
             alien.checkLocation = function () {
                 this.angle += alien.angleMomentum;
@@ -307,6 +370,85 @@ var PhaserGameObject = (function () {
                 this.checkLocation();
             };
         }
+        function createTrash(options) {
+            var game = phaserMaster.game();
+            var trash = phaserSprites.add({ x: options.x, y: options.y, name: "trash_" + game.rnd.integer(), group: 'trashes', reference: 'invader', visible: true });
+            trash.anchor.setTo(0.5, 0.5);
+            trash.scale.setTo(1, 1);
+            trash.animations.add('movement', [0, 1, 2, 3], 20, true);
+            trash.play('movement');
+            game.physics.enable(trash, Phaser.Physics.ARCADE);
+            trash.body.velocity.y = options.iy;
+            trash.body.velocity.x = options.ix;
+            trash.angleMomentum = game.rnd.integerInRange(-5, 5);
+            trash.body.bounce.setTo(1, 1);
+            phaserGroup.add(3, trash);
+            trash.damageIt = function () {
+                var emitter = phaserMaster.get('emitter');
+                emitter.x = this.x;
+                emitter.y = this.y;
+                emitter.start(true, 1500, null, 5);
+                this.destroyIt();
+            };
+            trash.removeIt = function () {
+                phaserSprites.destroy(this.name);
+            };
+            trash.destroyIt = function () {
+                var _this = this;
+                var score = phaserMaster.get('score');
+                phaserMaster.forceLet('score', score += 25);
+                var scoreText = phaserTexts.get('scoreText');
+                scoreText.updateScore();
+                var tween = {
+                    angle: game.rnd.integerInRange(-720, 720),
+                    x: this.x - game.rnd.integerInRange(-25, 25),
+                    y: this.y - game.rnd.integerInRange(5, 25),
+                    alpha: .5
+                };
+                this.game.add.tween(this).to(tween, game.rnd.integerInRange(50, 200), Phaser.Easing.Linear.Out, true, 0, 0, false);
+                this.body = null;
+                game.time.events.add(Phaser.Timer.SECOND / 3, function () {
+                    createExplosion(_this.x, _this.y, 1);
+                    phaserSprites.destroy(_this.name);
+                }, this).autoDestroy = true;
+            };
+            trash.checkLocation = function () {
+                this.angle += trash.angleMomentum;
+                if (this.angleMomentum > 0) {
+                    this.angleMomentum -= 0.002;
+                }
+                if (this.angleMomentum < 0) {
+                    this.angleMomentum += 0.002;
+                }
+                if (this.y > this.height) {
+                    if (this.body !== null) {
+                        this.body.collideWorldBounds = true;
+                    }
+                }
+                if (this.y > this.game.canvas.height - 100) {
+                    if (this.body !== null) {
+                        this.body.collideWorldBounds = false;
+                    }
+                }
+                if (this.y > this.game.canvas.height + this.height) {
+                    this.removeIt();
+                }
+            };
+            trash.onUpdate = function () {
+                if (this.body !== null) {
+                    if (this.body.velocity.y + 2 < 100) {
+                        this.body.velocity.y += 2;
+                    }
+                    if (this.body.velocity.x > 0) {
+                        this.body.velocity.x -= 0.2;
+                    }
+                    if (this.body.velocity.x < 0) {
+                        this.body.velocity.x += 0.2;
+                    }
+                }
+                this.checkLocation();
+            };
+        }
         function createBullet(x, y) {
             var game = phaserMaster.game();
             var bulletCount = phaserSprites.getGroup('bullets').length;
@@ -320,58 +462,160 @@ var PhaserGameObject = (function () {
             bullet.destroyIt = function () {
                 phaserSprites.destroy(this.name);
             };
-            bullet.pause = function () {
-                if (this.body !== null) {
-                    this.body.velocity.currentX = this.body.velocity.x;
-                    this.body.velocity.x = 0;
-                    this.body.velocity.currentY = this.body.velocity.y;
-                    this.body.velocity.y = 0;
-                }
-            };
-            bullet.unpause = function () {
-                if (this.body !== null) {
-                    this.body.velocity.y = this.body.velocity.currentY;
-                    this.body.velocity.x = this.body.velocity.currentX;
-                }
-            };
             bullet.onUpdate = function () {
                 var _this = this;
                 this.accelerate();
                 if (this.y < 0) {
                     this.destroyIt();
                 }
-                phaserSprites.getGroup('aliens').forEach(function (alien) {
-                    alien.game.physics.arcade.overlap(_this, alien, function (bullet, alien) {
+                returnAllCollidables().forEach(function (target) {
+                    target.game.physics.arcade.overlap(_this, target, function (bullet, target) {
                         bullet.destroyIt();
-                        alien.damageIt();
+                        target.damageIt();
                     }, null, _this);
                 });
             };
+        }
+        function createBomb(x, y) {
+            var game = phaserMaster.game();
+            var bombCount = phaserSprites.getGroup('bombCount').length;
+            var bomb = phaserSprites.add({ x: x, y: y, name: "bomb_" + game.rnd.integer(), group: 'bombs', reference: 'bomb' });
+            bomb.anchor.setTo(0.5, 0.5);
+            bomb.scale.setTo(2, 2);
+            game.physics.enable(bomb, Phaser.Physics.ARCADE);
+            bomb.body.velocity.y = -400;
+            phaserGroup.add(2, bomb);
+            bomb.destroyIt = function () {
+                createExplosion(this.x, this.y, 1.25);
+                for (var i = 0; i < 25; i++) {
+                    createBomblet({
+                        x: this.x,
+                        y: this.y,
+                        ix: game.rnd.integerInRange(-400, 400),
+                        iy: -game.rnd.integerInRange(-50, 400)
+                    });
+                }
+                phaserSprites.destroy(this.name);
+            };
+            bomb.onUpdate = function () {
+                var _this = this;
+                this.angle += 5;
+                if (this.y < 200) {
+                    this.destroyIt();
+                }
+                returnAllCollidables().forEach(function (target) {
+                    target.game.physics.arcade.overlap(_this, target, function (bomb, target) {
+                        bomb.destroyIt();
+                        target.damageIt();
+                    }, null, _this);
+                });
+            };
+        }
+        function createBomblet(options) {
+            var game = phaserMaster.game();
+            var bombCount = phaserSprites.getGroup('bombCount').length;
+            var bomblet = phaserSprites.add({ x: options.x, y: options.y, name: "bomblet_" + game.rnd.integer(), group: 'bomblets', reference: 'bomb' });
+            bomblet.anchor.setTo(0.5, 0.5);
+            bomblet.scale.setTo(0.5, 0.5);
+            game.physics.enable(bomblet, Phaser.Physics.ARCADE);
+            bomblet.body.velocity.y = options.iy;
+            bomblet.body.velocity.x = options.ix;
+            bomblet.fuse = game.time.now;
+            bomblet.detonate = game.time.now + game.rnd.integerInRange(1250, 1800);
+            phaserGroup.add(2, bomblet);
+            bomblet.destroyIt = function () {
+                impactExplosion(this.x, this.y, 1);
+                phaserSprites.destroy(this.name);
+            };
+            bomblet.onUpdate = function () {
+                var _this = this;
+                this.angle += 10;
+                if (this.game.time.now > bomblet.detonate) {
+                    this.destroyIt();
+                }
+                returnAllCollidables().forEach(function (target) {
+                    target.game.physics.arcade.overlap(_this, target, function (bomb, target) {
+                        bomblet.destroyIt();
+                        target.damageIt();
+                    }, null, _this);
+                });
+            };
+        }
+        function createExplosion(x, y, scale) {
+            var game = phaserMaster.game();
+            var explosion = phaserSprites.add({ name: "explosion_" + game.rnd.integer(), group: 'explosions', x: x, y: y, reference: 'kaboom' });
+            explosion.scale.setTo(scale, scale);
+            explosion.anchor.setTo(0.5, 0.5);
+            explosion.animations.add('kaboom');
+            explosion.play('kaboom', 30, false, true);
+            phaserGroup.add(6, explosion);
+            game.time.events.add(Phaser.Timer.SECOND / 2, function () {
+                phaserSprites.destroy(explosion.name);
+            }).autoDestroy = true;
+        }
+        function impactExplosion(x, y, scale) {
+            var game = phaserMaster.game();
+            var impactExplosion = phaserSprites.add({ name: "impactExplosion_" + game.rnd.integer(), group: 'impactExplosions', x: x, y: y, reference: 'kaboom' });
+            impactExplosion.scale.setTo(scale, scale);
+            impactExplosion.anchor.setTo(0.5, 0.5);
+            impactExplosion.animations.add('kaboom');
+            impactExplosion.play('kaboom', 30, false, true);
+            game.physics.enable(impactExplosion, Phaser.Physics.ARCADE);
+            phaserGroup.add(6, impactExplosion);
+            game.time.events.add(Phaser.Timer.SECOND / 2, function () {
+                phaserSprites.destroy(impactExplosion.name);
+            }).autoDestroy = true;
+            impactExplosion.onUpdate = function () {
+                var _this = this;
+                returnAllCollidables().forEach(function (target) {
+                    target.game.physics.arcade.overlap(_this, target, function (impactExplosion, target) {
+                        target.damageIt();
+                    }, null, _this);
+                });
+            };
+        }
+        function returnAllCollidables() {
+            return phaserSprites.getGroup('aliens').concat(phaserSprites.getGroup('trashes'));
         }
         function update() {
             var game = phaserMaster.game();
             var filter = phaserMaster.get('filter');
             var player = phaserSprites.get('player');
             var debuggerText = phaserTexts.get('debuggerText');
-            debuggerText.setText("Sprite count: " + phaserSprites.getAll("ARRAY").length);
+            debuggerText.onUpdate();
             filter.update();
             phaserSprites.getGroup('movingStarField').forEach(function (star) {
                 star.onUpdate();
             });
             if (phaserMaster.checkState('READY')) {
-                if (phaserSprites.getGroup('aliens').length < 3) {
+                if (phaserSprites.getGroup('aliens').length < 30) {
                     createAlien({
-                        x: game.rnd.integerInRange(50, game.canvas.width - 50),
-                        y: game.rnd.integerInRange(-200, -game.canvas.height),
+                        x: game.rnd.integerInRange(0, game.canvas.width),
+                        y: game.rnd.integerInRange(-50, -100),
                         ix: game.rnd.integerInRange(-100, 100),
-                        iy: game.rnd.integerInRange(0, 100)
+                        iy: game.rnd.integerInRange(0, 150)
                     });
                 }
-                phaserSprites.getGroup('aliens').forEach(function (alien) {
-                    alien.onUpdate();
+                phaserTexts.getGroup('timeKeeper').forEach(function (text) {
+                    text.onUpdate();
                 });
                 phaserSprites.getGroup('bullets').forEach(function (bullet) {
                     bullet.onUpdate();
+                });
+                phaserSprites.getGroup('aliens').forEach(function (alien) {
+                    alien.onUpdate();
+                });
+                phaserSprites.getGroup('trashes').forEach(function (trash) {
+                    trash.onUpdate();
+                });
+                phaserSprites.getGroup('bombs').forEach(function (bomb) {
+                    bomb.onUpdate();
+                });
+                phaserSprites.getGroup('bomblets').forEach(function (bomblet) {
+                    bomblet.onUpdate();
+                });
+                phaserSprites.getGroup('impactExplosions').forEach(function (impactExplosion) {
+                    impactExplosion.onUpdate();
                 });
                 if (phaserControls.read('RIGHT').active) {
                     player.moveX(5);
@@ -382,7 +626,30 @@ var PhaserGameObject = (function () {
                 if (phaserControls.checkWithDelay({ isActive: true, key: 'A', delay: 500 - (phaserControls.read('A').state * 75) })) {
                     createBullet(player.x, player.y);
                 }
+                if (phaserControls.checkWithDelay({ isActive: true, key: 'B', delay: 500 - (phaserControls.read('B').state * 75) })) {
+                    createBomb(player.x, player.y);
+                }
             }
+        }
+        function endLevel() {
+            phaserMaster.changeState('ENDLEVEL');
+            phaserTexts.getGroup('ui').forEach(function (text) {
+                text.hide();
+            });
+            phaserSprites.getGroup('ui').forEach(function (sprite) {
+                sprite.hide();
+            });
+            phaserTexts.getGroup('timeKeeper').forEach(function (text) {
+                text.hide();
+            });
+            phaserSprites.get('player').playEndSequence(function () {
+                phaserSprites.getGroup('aliens').forEach(function (alien) {
+                    alien.destroyIt(false);
+                });
+                phaserSprites.getGroup('trashes').forEach(function (trash) {
+                    trash.destroyIt(false);
+                });
+            });
         }
         parent.game = this;
         this.game = phaserMaster.game();
