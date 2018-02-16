@@ -32,8 +32,11 @@ export default {
           js.src = `src/phaser/${fileName}`;
           document.body.appendChild(js);
           js.onload = (() => {
-            __phaser.init(this.$el, this, {width: 640, height: 640});
+            __phaser.init(this.$el, this, {width: 640, height: 640, store: this.$store});
           })
+    },
+    nextLevel(){
+      this.loadGame('boilerplate/shooterDemo.js')
     },
     loadFile(file, index){
       this.active = index;
