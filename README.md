@@ -35,14 +35,18 @@ $ gulp
 ```
 
 
-### Game development mode
-Used in conjunction with [phaser_Buildtools](https://github.com/allenRoyston)
+### Install phaserBuildTools
+Used in conjunction with [phaserBuildtools](https://github.com/allenRoyston/phaserBuildtools)
 ```
-$ cd src/phaser_Buildtool/
+$ cd src/
+$ git clone https://github.com/allenRoyston/phaserBuildtools.git
+$ cd src/phaserBuildtools
+$ npm install
 $ gulp
-// will now watch for changes in the _gameTemplate.ts file and compile on changes
-// game will be available for debuggin in the route /#/phaserdev
 ```
+
+### Game development mode
+With the phaserBuildtools installed and gulp running, you'll be able to make edits to the gameTemplate.ts script.  Your file will be compiled when any changes are made, and can be seen on the route on the site #/phaserdev (or you can click the Development link in the navigation bar)
 
 
 ### Preload image assets -*optional*-
