@@ -1,6 +1,7 @@
 <template lang="pug">
-  div
+  .game-container
     #phaser-example
+    p {{gameData.level}}
 </template>
 
 <script>
@@ -12,9 +13,14 @@ export default {
   data () {
     return {
       game: null,
+      store: this.$store,
+      gameData: this.$store.getters._gameData()
     }
   },
   mounted(){
+    this.store.watch(this.store.getters._gameData, val => {
+
+    })
     this.init()
   },
   methods: {
@@ -38,6 +44,9 @@ export default {
     nextLevel(){
       this.loadGame('boilerplate/shooterDemo.js')
     },
+    gameOver(){
+      alert("GAME OVER")
+    },
     loadFile(file, index){
       this.active = index;
       this.loadGame(file)
@@ -51,6 +60,9 @@ export default {
 
 
 <style lang="sass" scoped>
+  .game-container
+    padding: 20px
+    background-color: #2f2f2f
   .small
     font-size: 12px
   .button

@@ -8,6 +8,12 @@ var PhaserGameObject = (function () {
     PhaserGameObject.prototype.init = function (el, parent, options) {
         var phaserMaster = new PHASER_MASTER({ game: new Phaser.Game(options.width, options.height, Phaser.WEBGL, el, { preload: preload, create: create, update: update }), resolution: { width: options.width, height: options.height } }), phaserControls = new PHASER_CONTROLS(), phaserMouse = new PHASER_MOUSE({ showDebugger: false }), phaserSprites = new PHASER_SPRITE_MANAGER(), phaserBmd = new PHASER_BITMAPDATA_MANAGER(), phaserTexts = new PHASER_TEXT_MANAGER(), phaserButtons = new PHASER_BUTTON_MANAGER(), phaserGroup = new PHASER_GROUP_MANAGER(), phaserBitmapdata = new PHASER_BITMAPDATA_MANAGER();
         var store = options.store;
+        phaserMaster.let('gameData', store.getters._gameData());
+        function saveData(prop, value) {
+            var gameData = phaserMaster.get('gameData');
+            gameData[prop] = value;
+            store.commit('setGamedata', gameData);
+        }
         function preload() {
             var game = phaserMaster.game();
             game.load.enableParallel = true;
@@ -20,6 +26,7 @@ var PhaserGameObject = (function () {
             game.load.image('background', 'src/assets/game/demo1/images/starfield.png');
             game.load.image('particlefx', 'src/assets/game/demo1/images/gem.png');
             game.load.image('earth', 'src/assets/game/demo1/images/earth.png');
+            game.load.image('gameBtn', 'src/assets/game/demo1/images/bulletBtn.png');
             game.load.audio('music-main', ['src/assets/game/demo1/music/zombies-in-space.ogg']);
             game.load.audio('powerupfx', ['src/assets/game/demo1/sound/Powerup4.ogg']);
             game.load.audio('select', ['src/assets/game/demo1/sound/Pickup_Coin.ogg']);
@@ -34,8 +41,19 @@ var PhaserGameObject = (function () {
         function generateHexColor() {
             return '#' + ((0.5 + 0.5 * Math.random()) * 0xFFFFFF << 0).toString(16);
         }
+        function tweenTint(obj, startColor, endColor, time) {
+            var game = phaserMaster.game();
+            var colorBlend = { step: 0 };
+            var colorTween = game.add.tween(colorBlend).to({ step: 100 }, time);
+            colorTween.onUpdateCallback(function () {
+                obj.tint = Phaser.Color.interpolateColor(startColor, endColor, 100, colorBlend.step);
+            });
+            obj.tint = startColor;
+            colorTween.start();
+        }
         function create() {
             var game = phaserMaster.game();
+            var gameData = phaserMaster.get('gameData');
             phaserControls.assign(game);
             phaserMouse.assign(game);
             phaserSprites.assign(game);
@@ -44,13 +62,13 @@ var PhaserGameObject = (function () {
             phaserButtons.assign(game);
             phaserGroup.assign(game);
             phaserBitmapdata.assign(game);
-            phaserMaster.let('score', 0);
-            phaserMaster.let('roundTime', 2);
+            phaserMaster.let('score', gameData.score);
+            phaserMaster.let('roundTime', 30);
             phaserMaster.let('clock', game.time.create(false));
             phaserMaster.let('elapsedTime', 0);
-            phaserMaster.let('devMode', true);
+            phaserMaster.let('devMode', false);
             phaserMaster.let('starMomentum', { x: 0, y: 0 });
-            phaserMaster.let('population', { total: 7000000, killed: 0 });
+            phaserMaster.let('population', { total: gameData.population.total, killed: gameData.population.killed });
             game.onPause.add(function () {
                 pauseGame();
             }, this);
@@ -142,6 +160,15 @@ var PhaserGameObject = (function () {
             earth.fadeOut = function () {
                 this.game.add.tween(this).to({ y: this.y + 200, alpha: 1 }, Phaser.Timer.SECOND * 9, Phaser.Easing.Linear.Out, true, 0, 0, false).autoDestroy = true;
             };
+            earth.selfDestruct = function () {
+                var _this = this;
+                tweenTint(this, this.tint, 1 * 0xff0000, Phaser.Timer.SECOND * 8);
+                for (var i_1 = 0; i_1 < 100; i_1++) {
+                    setTimeout(function () {
+                        createExplosion(game.rnd.integerInRange(0, _this.game.canvas.width), game.rnd.integerInRange(_this.game.canvas.height - 200, _this.game.canvas.height), 0.25);
+                    }, 100 * i_1);
+                }
+            };
             phaserGroup.add(2, earth);
             var timeSeconds = phaserTexts.add({ name: 'timeSeconds', group: 'timeKeeper', font: 'gem', size: 65, default: "25", visible: false });
             phaserTexts.alignToTopCenter('timeSeconds', 20);
@@ -180,20 +207,20 @@ var PhaserGameObject = (function () {
             scoreText.hide = function () {
                 game.add.tween(this).to({ y: -100 }, Phaser.Timer.SECOND, Phaser.Easing.Back.InOut, true, 0, 0, false);
             };
-            var livesText = phaserTexts.add({ name: 'livesText', group: 'ui', x: game.world.width - 100, y: 10, font: 'gem', size: 18, default: 'Lives', visible: false });
-            livesText.onUpdate = function () { };
-            livesText.reveal = function () {
+            var roundText = phaserTexts.add({ name: 'roundText', group: 'ui', x: game.world.width - 100, y: 10, font: 'gem', size: 18, default: "Round: " + gameData.level, visible: false });
+            roundText.onUpdate = function () { };
+            roundText.reveal = function () {
                 this.y = -this.height;
                 this.visible = true;
                 this.game.add.tween(this).to({ y: 10 }, Phaser.Timer.SECOND, Phaser.Easing.Back.InOut, true, 0, 0, false);
             };
-            livesText.hide = function () {
+            roundText.hide = function () {
                 this.game.add.tween(this).to({ y: -100 }, Phaser.Timer.SECOND, Phaser.Easing.Back.InOut, true, 0, 0, false);
             };
             var healthText = phaserTexts.add({ name: 'healthText', group: 'ui', font: 'gem', x: 15, y: game.canvas.height - 23, size: 16, default: '', visible: false });
             healthText.onUpdate = function () {
                 var pop = phaserMaster.get('population');
-                this.setText("Population: " + (pop.total - pop.killed));
+                this.setText("Population: " + (pop.total - pop.killed) * 7000000);
             };
             healthText.reveal = function () {
                 this.x = -this.width;
@@ -201,51 +228,50 @@ var PhaserGameObject = (function () {
                 this.game.add.tween(this).to({ x: 15 }, Phaser.Timer.SECOND, Phaser.Easing.Back.InOut, true, 0, 0, false);
             };
             healthText.hide = function () {
-                this.game.add.tween(this).to({ x: -this.width }, Phaser.Timer.SECOND, Phaser.Easing.Back.InOut, true, 0, 0, false);
+                this.game.add.tween(this).to({ x: -this.width - 100 }, Phaser.Timer.SECOND, Phaser.Easing.Back.InOut, true, 0, 0, false);
             };
-            var killCountText = phaserTexts.add({ name: 'killCount', group: 'ui', font: 'gem', size: 16, default: 'Humans killed...', visible: false });
-            phaserTexts.alignToCenter('killCount');
-            killCountText.onUpdate = function () { };
-            killCountText.reveal = function () { };
-            killCountText.hide = function () {
-                var _this = this;
-                killCountText.visible = true;
-                killCountText.alpha = 0;
-                if (phaserMaster.get('devMode')) {
-                    endGame();
-                }
-                this.game.add.tween(this).to({ alpha: 1, y: this.game.world.centerY - 25 }, 3000, Phaser.Easing.Linear.In, true, Phaser.Timer.SECOND * 6, 0, false).
-                    onComplete.add(function () {
-                    var pop = phaserMaster.get('population');
-                    _this.game.add.tween(_this).to({ alpha: 0 }, 2000, Phaser.Easing.Linear.Out, true, Phaser.Timer.SECOND * 2).onComplete.add(function () {
-                        var pop = phaserMaster.get('population');
-                        setTimeout(function () {
-                            var leftText = phaserTexts.add({ name: 'popLeft', font: 'gem', y: _this.game.world.centerY, size: 58, default: "" + pop.killed, visible: true });
-                            phaserTexts.alignToCenter('popLeft');
-                            leftText.game.add.tween(leftText).to({ alpha: 0 }, 2000, Phaser.Easing.Linear.Out, true, Phaser.Timer.SECOND * 1.5)
-                                .onComplete.add(function () {
-                                endGame();
-                            });
-                        }, 500);
-                    });
-                    phaserSprites.getGroup('movingStarField').forEach(function (star) {
-                        star.fadeOut();
-                    });
-                    phaserSprites.get('earth').fadeOut();
-                });
+            phaserGroup.addMany(9, [scoreText, roundText, timeSeconds]);
+            var overlaybmd = phaserBitmapdata.addGradient({ name: 'overlaybmd', start: '#2f2f2f', end: '#2f2f2f', width: 5, height: 5, render: false });
+            var overlay = phaserSprites.add({ x: 0, y: 0, name: "overlay", reference: overlaybmd.cacheBitmapData, visible: true });
+            overlay.width = game.canvas.width;
+            overlay.height = game.canvas.height;
+            overlay.fadeIn = function (duration, callback) {
+                game.add.tween(this).to({ alpha: 1 }, duration, Phaser.Easing.Linear.In, true, 0, 0, false);
+                setTimeout(function () {
+                    callback();
+                }, duration);
             };
-            phaserGroup.addMany(9, [scoreText, livesText, killCountText]);
+            overlay.fadeOut = function (duration, callback) {
+                game.add.tween(this).to({ alpha: 0 }, duration, Phaser.Easing.Linear.Out, true, 0, 0, false);
+                setTimeout(function () {
+                    callback();
+                }, duration);
+            };
+            phaserGroup.addMany(10, [overlay]);
             var shape = phaserBitmapdata.addGradient({ name: 'bmpHealthbar', group: 'ui', start: '#0000FF', end: '#33B5E5', width: game.canvas.width - 10, height: 20, render: false });
             var healthbar = phaserSprites.add({ x: 5, y: game.canvas.height - 25, name: "healthbar", group: 'ui', reference: shape.cacheBitmapData, visible: false });
             healthbar.scale.setTo(1, 1);
             healthbar.defaultWidth = healthbar.width;
+            healthbar.width = (healthbar.width - Math.round(healthbar.width * (gameData.population.killed / gameData.population.total)));
             healthbar.takeDamage = function (val) {
                 var population = phaserMaster.get('population');
                 population.killed += val;
                 var damageAmount = (val / population.total);
                 var damagePercent = (population.killed / population.total);
-                this.width = (this.defaultWidth - Math.round(this.defaultWidth * damagePercent));
-                createChipDamage({ x: this.width + (damageAmount * 100), y: this.y, width: Math.round(this.defaultWidth * damageAmount), height: this.height });
+                if (damagePercent >= 1) {
+                    population = { total: population.total, killed: population.total };
+                    if (phaserMaster.getCurrentState() !== 'GAMEOVER') {
+                        var healthText_1 = phaserTexts.get('healthText');
+                        healthText_1.setText("");
+                        this.width = 0;
+                        gameOver();
+                    }
+                }
+                else {
+                    createChipDamage({ x: this.width - 8, y: this.y, width: Math.round(this.defaultWidth * damageAmount), height: this.height });
+                    this.width = (this.defaultWidth - Math.round(this.defaultWidth * damagePercent));
+                }
+                saveData('population', { total: population.total, killed: population.killed });
                 phaserMaster.forceLet('population', population);
             };
             healthbar.onUpdate = function () {
@@ -260,34 +286,76 @@ var PhaserGameObject = (function () {
             };
             phaserBitmapdata.addGradient({ name: 'chipDamageBmp', group: 'chipdamage', start: '#2f3640', end: '#e84118', width: 1, height: 20, render: false });
             phaserGroup.addMany(9, [healthbar]);
+            var specialWeapon = phaserSprites.add({ x: -100, y: game.canvas.height - 55, name: "specialWeapon", group: 'ui', reference: 'bomb', visible: false });
+            specialWeapon.anchor.setTo(0.5, 0.5);
+            specialWeapon.scale.setTo(2, 2);
+            specialWeapon.onUpdate = function () { };
+            specialWeapon.reveal = function () {
+                this.visible = true;
+                this.game.add.tween(this).to({ x: 30 }, Phaser.Timer.SECOND, Phaser.Easing.Back.InOut, true, 0, 0, false);
+            };
+            specialWeapon.hide = function () {
+                this.visible = true;
+                this.game.add.tween(this).to({ x: -100 }, Phaser.Timer.SECOND, Phaser.Easing.Back.OutIn, true, 0, 0, false);
+            };
+            specialWeapon.onPress = function (delay) {
+                var _this = this;
+                var spt = phaserTexts.get('specialWeaponText');
+                this.alpha = 0.25;
+                spt.alpha = 0.5;
+                spt.setText('Reloading...');
+                this.game.add.tween(this).to({ alpha: 1 }, delay - 50, Phaser.Easing.Linear.In, true, 0, 0, false);
+                game.time.events.add(delay - 50, function () {
+                    _this.alpha = 1;
+                    spt.alpha = 1;
+                    spt.resetText();
+                }, this);
+            };
+            var specialWeaponText = phaserTexts.add({ name: 'specialWeaponText', group: 'ui', font: 'gem', x: -100, y: game.canvas.height - 63, size: 16, default: '', visible: false });
+            specialWeaponText.resetText = function () {
+                this.setText('Cluster Bombs');
+            };
+            specialWeaponText.onUpdate = function () { };
+            specialWeaponText.reveal = function () {
+                this.resetText();
+                this.visible = true;
+                this.game.add.tween(this).to({ x: 55 }, Phaser.Timer.SECOND, Phaser.Easing.Back.InOut, true, 0, 0, false);
+            };
+            specialWeaponText.hide = function () {
+                this.game.add.tween(this).to({ x: -100 }, Phaser.Timer.SECOND, Phaser.Easing.Back.InOut, true, 0, 0, false);
+            };
+            phaserGroup.addMany(9, [specialWeapon, specialWeaponText]);
         }
         function preloadComplete() {
             var game = phaserMaster.game();
             var isDevMode = phaserMaster.get('devMode');
             var player = createPlayer();
-            playSequence(['SAVE', 'THE', 'WORLD'], function () {
-                player.moveToStart();
-                game.time.events.add(isDevMode ? Phaser.Timer.SECOND * 0 : Phaser.Timer.SECOND * 1, function () {
-                    playSequence([phaserMaster.get('roundTime') + " SECONDS", 'GO'], function () {
-                        phaserTexts.getGroup('timeKeeper').forEach(function (text) {
-                            text.reveal();
-                        });
-                        game.time.events.add(isDevMode ? Phaser.Timer.SECOND * 0 : Phaser.Timer.SECOND / 2, function () {
-                            phaserTexts.getGroup('ui').forEach(function (text) {
+            phaserSprites.get('overlay').fadeOut(Phaser.Timer.SECOND / 2, function () {
+                playSequence('SAVE THE WORLD', function () {
+                    player.moveToStart();
+                    game.time.events.add(isDevMode ? Phaser.Timer.SECOND * 0 : Phaser.Timer.SECOND * 1, function () {
+                        playSequence(phaserMaster.get('roundTime') + " SECONDS GO", function () {
+                            phaserTexts.getGroup('timeKeeper').forEach(function (text) {
                                 text.reveal();
                             });
-                            phaserSprites.getGroup('ui').forEach(function (sprite) {
-                                sprite.reveal();
-                            });
-                        }).autoDestroy = true;
-                        phaserMaster.get('clock').start();
-                        phaserMaster.changeState('READY');
+                            game.time.events.add(isDevMode ? Phaser.Timer.SECOND * 0 : Phaser.Timer.SECOND / 2, function () {
+                                phaserTexts.getGroup('ui').forEach(function (text) {
+                                    text.reveal();
+                                });
+                                phaserSprites.getGroup('ui').forEach(function (sprite) {
+                                    sprite.reveal();
+                                });
+                            }).autoDestroy = true;
+                            phaserMaster.get('clock').start();
+                            phaserMaster.changeState('READY');
+                        });
                     });
                 });
             });
         }
-        function playSequence(wordlist, callback) {
+        function playSequence(wordString, callback) {
             var game = phaserMaster.game();
+            var wordlist = wordString.split(" ");
             wordlist.forEach(function (word, index) {
                 var splashText = phaserTexts.add({ name: "splashText_" + game.rnd.integer(), group: 'splash', font: 'gem', size: 18, default: word, visible: false });
                 splashText.startSplash = function () {
@@ -315,22 +383,31 @@ var PhaserGameObject = (function () {
             phaserGroup.add(8, player);
             player.onUpdate = function () {
                 var trailCount = phaserSprites.getGroup('trails').length;
-                if (trailCount < 10) {
+                if (trailCount < phaserMaster.checkState('ENDLEVEL') ? 20 : 10) {
                     var trail = phaserSprites.add({ name: "trail_" + game.rnd.integer(), group: 'trails', x: this.x, y: this.y, reference: 'player', visible: true });
                     trail.anchor.setTo(0.5, 0.5);
-                    trail.scale.setTo(0.5, 0.5);
+                    trail.scale.setTo(this.scale.x, this.scale.y);
                     trail.alpha = 0.5;
                     trail.tint = 1 * 0x0000ff;
                     phaserGroup.add(7, trail);
                     trail.destroySelf = function () {
                         var _this = this;
-                        this.game.add.tween(this).to({ alpha: 0 }, 100, Phaser.Easing.Linear.In, true, 0).
+                        this.game.add.tween(this).to({ alpha: 0 }, phaserMaster.checkState('ENDLEVEL') ? 400 : 100, Phaser.Easing.Linear.In, true, 0).
                             onComplete.add(function () {
                             phaserSprites.destroy(_this.name);
                         }, this);
                     };
                     trail.destroySelf();
                 }
+            };
+            player.selfDestruct = function () {
+                var _this = this;
+                game.add.tween(this.scale).to({ x: 0.25, y: 0.25 }, 350, Phaser.Easing.Linear.In, true, 0).
+                    game.add.tween(this).to({ angle: 720 }, 350, Phaser.Easing.Linear.In, true, 0).
+                    onComplete.add(function () {
+                    phaserSprites.destroy(_this.name);
+                    createExplosion(_this.x, _this.y, 1.5);
+                }, this);
             };
             player.moveToStart = function () {
                 this.visible = true;
@@ -428,6 +505,7 @@ var PhaserGameObject = (function () {
                 if (spawnMore === void 0) { spawnMore = true; }
                 var score = phaserMaster.get('score');
                 phaserMaster.forceLet('score', score += 100);
+                saveData('score', score);
                 var scoreText = phaserTexts.get('scoreText');
                 scoreText.updateScore();
                 var tween = {
@@ -463,7 +541,7 @@ var PhaserGameObject = (function () {
                     _this.game.add.tween(_this.scale).to({ x: 0, y: 0 }, Phaser.Timer.SECOND * 1, Phaser.Easing.Linear.In, true, game.rnd.integerInRange(0, 500)).
                         onComplete.add(function () {
                         _this.removeIt();
-                        phaserSprites.get('healthbar').takeDamage(200000 + game.rnd.integerInRange(1, 2000));
+                        phaserSprites.get('healthbar').takeDamage(2);
                         createExplosion(_this.x, _this.y, 0.25);
                     }).autoDestroy = true;
                 }, 300);
@@ -548,7 +626,7 @@ var PhaserGameObject = (function () {
                     _this.game.add.tween(_this.scale).to({ x: 0, y: 0 }, Phaser.Timer.SECOND * 1, Phaser.Easing.Linear.In, true, game.rnd.integerInRange(0, 500)).
                         onComplete.add(function () {
                         _this.removeIt();
-                        phaserSprites.get('healthbar').takeDamage(100000 + game.rnd.integerInRange(1, 1000));
+                        phaserSprites.get('healthbar').takeDamage(1);
                         createExplosion(_this.x, _this.y, 0.25);
                     }).autoDestroy = true;
                 }, 300);
@@ -752,6 +830,7 @@ var PhaserGameObject = (function () {
             filter.update();
             var starMomentum = phaserMaster.get('starMomentum');
             var player = phaserSprites.get('player');
+            var specialWeapon = phaserSprites.get('specialWeapon');
             phaserSprites.get('earth').onUpdate();
             phaserSprites.getGroup('movingStarField').forEach(function (star) {
                 star.onUpdate();
@@ -814,13 +893,20 @@ var PhaserGameObject = (function () {
                     createBullet(player.x - 20, player.y);
                     createBullet(player.x + 20, player.y);
                 }
-                if (phaserControls.checkWithDelay({ isActive: true, key: 'B', delay: 500 - (phaserControls.read('B').state * 75) })) {
-                    createBomb(player.x, player.y);
+                if (phaserControls.checkWithDelay({ isActive: true, key: 'B', delay: 4000 })) {
+                    if (phaserControls.read("B").type == 'QUICK') {
+                        specialWeapon.onPress(4000);
+                        createBomb(player.x, player.y);
+                    }
                 }
+            }
+            if (phaserMaster.checkState('ENDLEVEL')) {
+                player.onUpdate();
             }
         }
         function endLevel() {
             var game = phaserMaster.game();
+            var gameData = phaserMaster.get('gameData');
             phaserMaster.changeState('ENDLEVEL');
             phaserTexts.getGroup('ui').forEach(function (text) {
                 text.hide();
@@ -832,16 +918,65 @@ var PhaserGameObject = (function () {
                 text.hide();
             });
             phaserSprites.get('player').playEndSequence(function () {
-                phaserSprites.getGroup('aliens').forEach(function (alien) {
+                var level = gameData.level++;
+                level++;
+                saveData('level', level);
+                for (var i = 0; i < 20; i++) {
                     setTimeout(function () {
-                        alien.destroyIt(false);
-                    }, game.rnd.integerInRange(0, 500));
-                });
-                phaserSprites.getGroup('trashes').forEach(function (trash) {
+                        createExplosion(game.rnd.integerInRange(0, game.world.width), game.rnd.integerInRange(0, game.world.height), game.rnd.integerInRange(1, 4));
+                    }, game.rnd.integerInRange(0, 50) * i);
+                }
+                setTimeout(function () {
+                    phaserSprites.getGroup('aliens').forEach(function (alien) {
+                        setTimeout(function () {
+                            alien.destroyIt(false);
+                        }, game.rnd.integerInRange(0, 500));
+                    });
+                    phaserSprites.getGroup('trashes').forEach(function (trash) {
+                        setTimeout(function () {
+                            trash.destroyIt(false);
+                        }, game.rnd.integerInRange(0, 500));
+                    });
                     setTimeout(function () {
-                        trash.destroyIt(false);
-                    }, game.rnd.integerInRange(0, 500));
-                });
+                        playSequence('NICE JOB STUD', function () {
+                            phaserSprites.getGroup('movingStarField').forEach(function (star) {
+                                star.fadeOut();
+                            });
+                            phaserSprites.get('earth').fadeOut();
+                            setTimeout(function () {
+                                var pop = phaserMaster.get('population');
+                                var leftText = phaserTexts.add({ name: 'popLeft', font: 'gem', y: game.world.centerY, size: 58, default: "Humans saved:", visible: true });
+                                phaserTexts.alignToCenter('popLeft');
+                                leftText.game.add.tween(leftText).to({ alpha: 0 }, 1000, Phaser.Easing.Linear.Out, true, Phaser.Timer.SECOND)
+                                    .onComplete.add(function () {
+                                    leftText.alpha = 1;
+                                    leftText.setText("" + (pop.total - pop.killed) * 700000);
+                                    phaserTexts.alignToCenter('popLeft');
+                                    leftText.game.add.tween(leftText).to({ alpha: 0 }, 1000, Phaser.Easing.Linear.Out, true, Phaser.Timer.SECOND * 2)
+                                        .onComplete.add(function () {
+                                        phaserSprites.get('overlay').fadeIn(Phaser.Timer.SECOND * 1.5, function () {
+                                            endGame();
+                                        });
+                                    });
+                                });
+                            }, Phaser.Timer.SECOND);
+                        });
+                    }, Phaser.Timer.SECOND * 1.5);
+                }, Phaser.Timer.SECOND / 3);
+            });
+        }
+        function gameOver() {
+            phaserMaster.changeState('GAMEOVER');
+            var player = phaserSprites.get('player');
+            var earth = phaserSprites.get('earth');
+            player.selfDestruct();
+            earth.selfDestruct();
+            playSequence('DUDE IT WAS THE FIRST LEVEL JEEZE', function () {
+                setTimeout(function () {
+                    phaserSprites.get('overlay').fadeIn(Phaser.Timer.SECOND * 3, function () {
+                        parent.gameOver();
+                    });
+                }, Phaser.Timer.SECOND * 1.5);
             });
         }
         function endGame() {
